@@ -1,0 +1,66 @@
+groups:
+  - name: kerberos_critical_alerts
+    interval: 30s
+    rules:
+      # System Health Alerts
+      - alert: ServiceDown
+        expr: up{job=~"dispatcher|ml_worker|dashboard"} == 0
+        for: 2m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Service {{ $labels.job }} is down"
+          description: "{{ $labels.job }} has been unavailable for 2 minutes"
+
+      # Queue Health Alerts
+      - alert: QueueDepthHigh
+        expr: redis_ml_processing_queue_len > 100
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Video processing queue is backing up"
+          description: "Queue has {{ $value }} videos pending (threshold: 100)"
+
+      - alert: QueueDepthCritical
+        expr: redis_ml_processing_queue_len > 500
+        for: 2m
+        labels:
+          severity: critical
+        annotations:
+          summary: "CRITICAL: Video queue severely backed up"
+          description: "Queue has {{ $value }} videos (critical threshold: 500)"
+
+      # Processing Performance Alerts
+      - alert: HighErrorRate
+        expr: rate(videos_processed_total{status="error"}[5m]) > 0.1
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "High video processing error rate"
+          description: "{{ $value | humanizePercentage }} of videos are failing"
+
+      # Resource Alerts
+      - alert: HighMemoryUsage
+        expr: container_memory_usage_bytes{name=~"ml_worker.*"} / container_spec_memory_limit_bytes > 0.9
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "ML worker memory usage high"
+          description: "{{ $labels.name }} using {{ $value | humanizePercentage }} of memory"
+
+  - name: kerberos_sla_alerts
+    interval: 1m
+    rules:
+      # SLA: 99.5% uptime for core services
+      - alert: SLAViolation_Uptime
+        expr: avg_over_time(up{job=~"dispatcher|dashboard"}[1h]) < 0.995
+        for: 5m
+        labels:
+          severity: critical
+          sla: uptime
+        annotations:
+          summary: "SLA violation: Service uptime"
+          description: "{{ $labels.job }} uptime ({{ $value | humanizePercentage }}) below 99.5% SLA"

@@ -1,0 +1,34 @@
+# ==========================================
+# Camera Registry Configuration
+# ==========================================
+# Add your cameras here. Each camera needs:
+# - id: Unique identifier (no spaces, used in paths)
+# - name: Human-readable display name
+# - location: Physical location description
+# - ip: IP address on the local network where agent runs
+# - port: Stream port (usually 81 for ESP32-CAM)
+# - enabled: true/false to enable/disable
+# ==========================================
+
+cameras:
+  - id: "cam-01"
+    name: "Camera 01"
+    location: "Location A"
+    ip: "192.168.1.100"
+    port: 81
+    enabled: true
+
+  - id: "test-cam"
+    name: "Test Camera"
+    location: "Retail Store Test"
+    ip: "127.0.0.1"
+    port: 81
+    enabled: true
+    
+  # Example of adding more cameras:
+  # - id: "cam-02"
+  #   name: "Warehouse Camera"
+  #   location: "Location B"
+  #   ip: "192.168.2.50"
+  #   port: 81
+  #   enabled: true

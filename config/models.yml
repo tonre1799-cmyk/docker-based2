@@ -1,0 +1,42 @@
+# ==========================================
+# ML Models Configuration
+# ==========================================
+# Define available ML models and their settings.
+# Each model processes camera recordings independently.
+# ==========================================
+
+models:
+  - id: "person_detection"
+    name: "Person Detection (YOLOv8)"
+    enabled: true
+    dependencies: []
+    description: "Detects people using YOLOv8 for retail analytics"
+    output_table: "person_detections"
+    config:
+      model_size: "yolov8n.pt"  # nano, small, medium, large, xlarge
+      confidence: 0.5  # Minimum confidence threshold
+      frame_skip: 1  # Process every Nth frame (1 = all frames)
+
+  - id: "heatmap"
+    name: "Motion Heatmap (Sony AITRIOS)"
+    enabled: true
+    dependencies: ["tracking"]
+    description: "Generates human-specific heatmap from person detections"
+    output_table: "heatmaps"
+    config:
+      grid_size: [10, 10]  # Heatmap grid rows x cols
+    
+  - id: "tracking"
+    name: "Object Tracking"
+    enabled: true
+    dependencies: []
+    description: "Tracks objects across frames"
+    output_table: "tracking_events"
+    config:
+      min_area: 500  # Minimum object area in pixels
+      max_disappeared: 30  # Max frames before removing tracker
+  
+  # Add more models here in the future:
+  # - id: "zone_analytics"
+  #   name: "Zone Analytics"
+  #   enabled: true

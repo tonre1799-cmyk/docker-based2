@@ -1,0 +1,38 @@
+groups:
+  - name: system_health
+    rules:
+      - alert: MLWorkerDown
+        expr: up{job="ml-worker"} == 0
+        for: 1m
+        labels:
+          severity: critical
+        annotations:
+          summary: "ML Worker instance down"
+          description: "An ML Worker instance has been down for more than 1 minute."
+
+      - alert: DispatcherDown
+        expr: up{job="dispatcher"} == 0
+        for: 1m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Dispatcher down"
+          description: "The event dispatcher service is down."
+
+      - alert: QueueDepthHigh
+        expr: redis_db_keys{instance="redis:6379", db="db0"} > 500
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "High processing queue depth"
+          description: "More than 500 tasks are pending in the ML processing queue."
+
+      - alert: HighTaskFailureRate
+        expr: rate(webhook_received_total{status="error"}[5m]) > 0.1
+        for: 2m
+        labels:
+          severity: warning
+        annotations:
+          summary: "High webhook failure rate"
+          description: "The dispatcher is failing to process webhooks (> 10% failure rate)."
