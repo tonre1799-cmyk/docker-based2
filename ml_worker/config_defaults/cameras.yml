@@ -1,0 +1,11 @@
+# Default Camera Configuration
+# ============================
+# This is a template. Copy this to /app/config/cameras.yml and customize.
+
+cameras:
+  - id: "cam-default"
+    name: "Default Camera"
+    location: "Unknown"
+    ip: "192.168.1.100"
+    port: 81
+    enabled: false

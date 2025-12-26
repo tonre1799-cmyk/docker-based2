@@ -1,0 +1,25 @@
+# Default Models Configuration
+# =============================
+# This is a template. Copy this to /app/config/models.yml and customize.
+
+models:
+  - id: "person_detection"
+    name: "Person Detection (YOLOv8)"
+    enabled: true
+    config:
+      model_size: "n"  # n, s, m, l, x (nano to xlarge)
+      confidence: 0.5
+      
+  - id: "heatmap"
+    name: "Motion Heatmap"
+    enabled: true
+    config:
+      grid_size: 20
+      decay_rate: 0.95
+      
+  - id: "tracking"
+    name: "Object Tracking"
+    enabled: false
+    config:
+      max_age: 30
+      min_hits: 3

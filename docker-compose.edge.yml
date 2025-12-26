@@ -1,0 +1,41 @@
+services:
+  agent:
+    image: kerberos/agent:latest
+    container_name: kerberos-agent
+    ports:
+      - "8080:80"
+    volumes:
+      - ./data/agent/recordings:/home/agent/data/recordings
+      - ./data/agent/config:/home/agent/data/config
+    environment:
+      - AGENT_MODE=release
+      - AGENT_KERBEROS_VAULT_URI=${CENTRAL_SERVER_URL:-http://central-vault:8081}
+      - AGENT_KERBEROS_VAULT_ACCESS_KEY=${AGENT_VAULT_ACCESS_KEY}
+      - AGENT_KERBEROS_VAULT_SECRET_KEY=${AGENT_VAULT_SECRET_KEY}
+      - CAMERA_STREAM_URL=${LOCAL_CAMERA_URL}
+    restart: unless-stopped
+
+  camera_api:
+    build:
+      context: .
+      target: camera-api
+    container_name: camera-management-api
+    ports:
+      - "8000:8000"
+    environment:
+      # Edge definition: Connects to agent on localhost (container network)
+      - KERBEROS_AGENT_URL=http://agent:80
+      # If Edge needs DB, it uses Sqlite? Original used Postgres.
+      # If Edge is standalone, does it have Postgres?
+      # If Edge connects to Central DB, needs HOST.
+      # Assuming Edge might be lightweight, maybe SQLite?
+      # But original had POSTGRES_HOST=postgres.
+      # If we deploy JUST Edge, we don't have Postgres service.
+      # So Camera API might fail if it depends on Postgres.
+      # Original had "depends_on: postgres" in base.
+      # If user wants clean separation, Edge might need its own DB or SQLite.
+      # I will configure it to point to a configurable DB host, defaults to 'postgres' (which won't exist in edge-only mode unless remote).
+      - POSTGRES_HOST=${POSTGRES_HOST:-postgres}
+    restart: unless-stopped
+    volumes:
+      - ./customer_config.yaml:/app/customer_config.yaml:ro

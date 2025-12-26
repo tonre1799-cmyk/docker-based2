@@ -1,0 +1,20 @@
+customer:
+  name: "Default Customer"
+  id: "default_tenant"
+
+branding:
+  page_title: "ML Heatmap & Tracking"
+  theme_color: "#FF4B4B" # Default Red
+  # logo_path: "assets/logo.png" # Uncomment to use a custom logo
+
+deployment:
+  mode: "central" # options: central, edge
+  
+features:
+  heatmaps: true
+  object_tracking: true
+  face_recognition: false
+  
+alert_thresholds:
+  loitering_seconds: 60
+  crowd_count: 10

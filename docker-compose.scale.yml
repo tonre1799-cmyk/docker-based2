@@ -1,0 +1,33 @@
+version: '3.8'
+
+services:
+  ml_worker:
+    deploy:
+      replicas: ${ML_WORKER_REPLICAS:-5}
+      resources:
+        limits:
+          memory: 6G
+        reservations:
+          memory: 2G
+    environment:
+      - MAX_DB_LIMIT=2000
+      - QUEUE_TTL_SECONDS=600 # Allow more time for processing during heavy load
+
+  dispatcher:
+    deploy:
+      replicas: ${DISPATCHER_REPLICAS:-2}
+    healthcheck:
+      test: [ "CMD", "curl", "-f", "http://localhost:5000/health" ]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # Scale Redis if needed in high-traffic scenarios (requires Cluster/Sentinel usually)
+  # For vertical scaling of Redis:
+  redis:
+    deploy:
+      resources:
+        limits:
+          memory: 2G
+        reservations:
+          memory: 512M

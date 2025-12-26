@@ -1,0 +1,153 @@
+# =============================================================================
+# Consolidated Docker Compose Configuration
+# =============================================================================
+# Use profiles to run different stacks:
+#   Central:    docker compose --profile central up
+#   Edge:       docker compose --profile edge up
+#   Monitoring: docker compose --profile monitoring up
+# =============================================================================
+
+services:
+  # ---------------------------------------------------------------------------
+  # Common Infrastructure
+  # ---------------------------------------------------------------------------
+  postgres:
+    image: postgres:15
+    profiles: [ "central" ]
+    environment:
+      - POSTGRES_DB=${POSTGRES_DB:-analytics}
+      - POSTGRES_USER=${POSTGRES_USER}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    restart: unless-stopped
+    healthcheck:
+      test: [ "CMD-SHELL", "pg_isready -U $$POSTGRES_USER -d $$POSTGRES_DB" ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  redis:
+    image: redis:7-alpine
+    profiles: [ "central", "edge" ]
+    command: redis-server --appendonly yes
+    volumes:
+      - redis_data:/data
+    restart: unless-stopped
+    healthcheck:
+      test: [ "CMD", "redis-cli", "ping" ]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+
+  minio:
+    image: minio/minio:RELEASE.2024-01-16T16-07-38Z
+    profiles: [ "central" ]
+    command: server /data --console-address ":9001"
+    ports:
+      - "9000:9000"
+      - "9001:9001"
+    environment:
+      - MINIO_ROOT_USER=${MINIO_ROOT_USER}
+      - MINIO_ROOT_PASSWORD=${MINIO_ROOT_PASSWORD}
+    volumes:
+      - minio_data:/data
+    restart: unless-stopped
+
+  # ---------------------------------------------------------------------------
+  # Central Services
+  # ---------------------------------------------------------------------------
+  dispatcher:
+    build:
+      context: .
+      target: dispatcher
+    profiles: [ "central" ]
+    environment:
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+      - SECRET_KEY=${SECRET_KEY}
+    depends_on:
+      redis:
+        condition: service_healthy
+    restart: unless-stopped
+
+  ml_worker:
+    build:
+      context: .
+      target: ml-worker
+    profiles: [ "central" ]
+    environment:
+      - DB_TYPE=postgres
+      - POSTGRES_HOST=postgres
+      - POSTGRES_USER=${POSTGRES_USER}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
+      - REDIS_HOST=redis
+      - MINIO_ENDPOINT=minio:9000
+      - MINIO_ACCESS_KEY=${MINIO_ACCESS_KEY}
+      - MINIO_SECRET_KEY=${MINIO_SECRET_KEY}
+      - MINIO_BUCKET=${MINIO_BUCKET:-recordings}
+      - RECORDINGS_DIR=/app/data/vault/recordings
+    volumes:
+      - ./config:/app/config
+      - ./data/heatmaps:/app/data/heatmaps
+      - ./data/vault/recordings:/app/data/vault/recordings:ro
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    restart: unless-stopped
+
+  dashboard:
+    build:
+      context: .
+      target: dashboard
+    profiles: [ "central" ]
+    ports:
+      - "8501:8501"
+    environment:
+      - DB_TYPE=postgres
+      - POSTGRES_HOST=postgres
+      - POSTGRES_USER=${POSTGRES_USER}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
+    depends_on:
+      postgres:
+        condition: service_healthy
+    restart: unless-stopped
+
+  # ---------------------------------------------------------------------------
+  # Monitoring Stack
+  # ---------------------------------------------------------------------------
+  prometheus:
+    image: prom/prometheus:v2.49.1
+    profiles: [ "monitoring" ]
+    volumes:
+      - ./infrastructure/prometheus:/etc/prometheus
+      - prometheus_data:/prometheus
+    ports:
+      - "9090:9090"
+    restart: unless-stopped
+
+  grafana:
+    image: grafana/grafana:10.3.1
+    profiles: [ "monitoring" ]
+    ports:
+      - "3000:3000"
+    volumes:
+      - grafana_data:/var/lib/grafana
+    restart: unless-stopped
+
+volumes:
+  postgres_data:
+  redis_data:
+  minio_data:
+  mongo_data:
+  prometheus_data:
+  grafana_data:
+  jaeger_data:
+
+
+networks:
+  default:
+    name: analytics_network
+    driver: bridge

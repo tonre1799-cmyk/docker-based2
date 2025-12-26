@@ -1,0 +1,54 @@
+version: '3.8'
+
+services:
+  # 1. Disposable Database
+  postgres-test:
+    image: postgres:15-alpine
+    environment:
+      POSTGRES_USER: test_user
+      POSTGRES_PASSWORD: test_password
+      POSTGRES_DB: test_db
+    ports:
+      - "5432"
+    healthcheck:
+      test: [ "CMD-SHELL", "pg_isready -U test_user -d test_db" ]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    networks:
+      - test-net
+
+  # 2. Mock External ML Service (Standard 7)
+  ml-mock:
+    image: python:3.11-slim
+    command: python -c "import http.server; print('ML Mock Up'); http.server.HTTPServer(('0.0.0.0', 5000), http.server.SimpleHTTPRequestHandler).serve_forever()"
+    expose:
+      - "5000"
+    networks:
+      - test-net
+
+  # 3. Integration Test Runner
+  integration-runner:
+    build:
+      context: .
+      target: test
+    image: myapp:test
+    command: pytest tests/integration/test_postgres_repository.py -v
+    environment:
+      POSTGRES_HOST: postgres-test
+      POSTGRES_PORT: 5432
+      POSTGRES_USER: test_user
+      POSTGRES_PASSWORD: test_password
+      POSTGRES_DB: test_db
+      ML_SERVICE_URL: http://ml-mock:5000
+    depends_on:
+      postgres-test:
+        condition: service_healthy
+      ml-mock:
+        condition: service_started
+    networks:
+      - test-net
+
+networks:
+  test-net:
+    driver: bridge
